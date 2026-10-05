@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: waypoint_db
+    restart: always
+    environment:
+      POSTGRES_USER: waypoint
+      POSTGRES_PASSWORD: waypoint_secret
+      POSTGRES_DB: waypoint_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waypoint -d waypoint_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: waypoint_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://waypoint:waypoint_secret@db:5432/waypoint_db
+      - DEMO_MODE=true
+      - DEMO_NOW=2025-07-31T14:00:00+05:30
+      - SECRET_KEY=waypoint_super_secret_jwt_key_change_in_production
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head && python -m app.seed.loader && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  postgres_data:

@@ -1,0 +1,165 @@
+# ==============================================================================
+# Waypoint - Global Git Ignore Configuration
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Python & FastAPI Backend
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+htmlcov/
+
+# Local SQLite & Databases
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+test_waypoint.db
+waypoint_dev.db
+
+# ------------------------------------------------------------------------------
+# Node.js & Web Frontends (Dispatcher & Store Manager)
+# ------------------------------------------------------------------------------
+node_modules/
+node_modules_old/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store
+.next/
+dist/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# ------------------------------------------------------------------------------
+# Flutter & Dart (Waypoint Express Mobile & Web)
+# ------------------------------------------------------------------------------
+# Flutter tool & packages
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Flutter build outputs
+build/
+app.*.symbols
+app.*.map.json
+
+# Android build artifacts
+.gradle/
+**/android/.gradle/
+**/android/local.properties
+**/android/app/build/
+**/android/.cxx/
+**/android/build/
+**/android/captures/
+**/android/app/release/
+**/android/app/debug/
+*.apk
+*.aab
+*.dex
+
+# iOS build artifacts
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/profile
+**/ios/release
+*.ipa
+*.dSYM/
+
+# Desktop / Web Ephemeral
+**/macos/Flutter/ephemeral/
+**/macos/Pods/
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/web/build/
+
+# ------------------------------------------------------------------------------
+# Environment Variables & Secrets (Keep .env.example tracked)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.crt
+!.env.example
+
+# ------------------------------------------------------------------------------
+# IDE & Editor Configurations
+# ------------------------------------------------------------------------------
+.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+*.iml
+*.ipr
+*.iws
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# ------------------------------------------------------------------------------
+# Operating System Files
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# ------------------------------------------------------------------------------
+# Logs & Temporary Files
+# ------------------------------------------------------------------------------
+*.log
+logs/
+tmp/
+temp/

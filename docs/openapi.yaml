@@ -1,0 +1,4069 @@
+openapi: 3.1.0
+info:
+  title: Waypoint Delivery Planning System API
+  description: OpenAPI 3.1 specification for the Waypoint Group delivery planning system.
+  contact:
+    email: tech-triathlon@rootcode.io
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: Production API Base Endpoint
+tags:
+  - name: auth
+    description: Authentication endpoints
+  - name: reference
+    description: Reference datasets and configuration endpoints
+  - name: store_manager
+    description: Store manager order and receipt endpoints
+  - name: dispatcher
+    description: Dispatcher planning and live monitoring endpoints
+  - name: loader
+    description: Warehouse loader endpoints
+  - name: driver
+    description: Driver trip and offline execution endpoints
+paths:
+  # ----------------------------------------------------
+  # Auth & Reference Endpoints
+  # ----------------------------------------------------
+  /auth/login:
+    post:
+      operationId: login
+      summary: User login to receive JWT bearer token
+      tags:
+        - auth
+      x-role:
+        - dispatcher
+        - loader
+        - driver
+        - store_manager
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: dispatcher@waypoint.test
+              password: Password123!
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                access_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example
+                token_type: bearer
+                user:
+                  id: USR001
+                  username: dispatcher@waypoint.test
+                  role: dispatcher
+                  depot_ids:
+                    - Peliyagoda
+                    - Kandy
+                  display_name: Lead Dispatcher
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: UNAUTHORIZED
+                  message: Invalid username or password
+        '422':
+          description: Unprocessable entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /me:
+    get:
+      operationId: getCurrentUser
+      summary: Get current authenticated user profile and scopes
+      tags:
+        - auth
+      x-role:
+        - dispatcher
+        - loader
+        - driver
+        - store_manager
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: USR001
+                username: dispatcher@waypoint.test
+                role: dispatcher
+                depot_ids:
+                  - Peliyagoda
+                  - Kandy
+                display_name: Lead Dispatcher
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ref/outlets:
+    get:
+      operationId: getRefOutlets
+      summary: Retrieve reference outlets catalog
+      tags:
+        - reference
+      x-role:
+        - dispatcher
+        - loader
+        - driver
+        - store_manager
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Outlets catalog list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Outlet'
+              example:
+                - outlet_id: OUT001
+                  brand: Fresh
+                  district: Colombo
+                  depot: Peliyagoda
+                  dock_type: street
+                  parking_constraint: van_only
+                  window_open_time: "05:30"
+                  window_close_time: "08:00"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ref/vehicles:
+    get:
+      operationId: getRefVehicles
+      summary: Retrieve reference vehicles fleet catalog
+      tags:
+        - reference
+      x-role:
+        - dispatcher
+        - loader
+        - driver
+        - store_manager
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Vehicles fleet list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vehicle'
+              example:
+                - vehicle_id: VEH001
+                  type: truck
+                  temp: chilled
+                  weight_cap_kg: 3610
+                  volume_cap_m3: 19.4
+                  fuel_type: diesel
+                  km_per_l: 5.2
+                  weekly_fuel_quota_l: 450
+                  depot: Peliyagoda
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ref/calendar:
+    get:
+      operationId: getRefCalendar
+      summary: Retrieve operating calendar reference data
+      tags:
+        - reference
+      x-role:
+        - dispatcher
+        - loader
+        - driver
+        - store_manager
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Operating calendar days list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CalendarDay'
+              example:
+                - date: "2025-08-01"
+                  dow: 4
+                  dow_name: Friday
+                  is_weekend: 0
+                  iso_year: 2025
+                  iso_week: 31
+                  is_payday: 0
+                  festival_ramp: 0.3
+                  is_holiday: 0
+                  monsoon: 0
+                  is_operating: 1
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ref/config:
+    get:
+      operationId: getRefConfig
+      summary: Retrieve system reference parameters and operational config
+      tags:
+        - reference
+      x-role:
+        - dispatcher
+        - loader
+        - driver
+        - store_manager
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Reference configuration parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefConfigResponse'
+              example:
+                cutoff_time: "16:00"
+                budget_fresh_min: 270
+                budget_style_tech_min: 480
+                unit_constants:
+                  Fresh:
+                    chilled: { kg_per_unit: 1.2, m3_per_unit: 0.005 }
+                business_clock: "2025-07-31T14:00:00+05:30"
+                demo_mode: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ----------------------------------------------------
+  # Store Manager Endpoints
+  # ----------------------------------------------------
+  /orders:
+    post:
+      operationId: createOrder
+      summary: Place a new store delivery order before cutoff
+      tags:
+        - store_manager
+      x-role:
+        - store_manager
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+            example:
+              outlet_id: OUT004
+              delivery_date: "2025-08-01"
+              temp_requirement: chilled
+              order_units: 150
+              note: Weekly chilled replenishment
+              client_op_id: c382a912-70b1-4f11-92b4-e4fbfd8e4011
+      responses:
+        '201':
+          description: Order successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponse'
+              example:
+                order:
+                  id: ORD-20250801-001
+                  outlet_id: OUT004
+                  delivery_date: "2025-08-01"
+                  placed_at: "2025-07-31T14:00:00+05:30"
+                  status: SUBMITTED
+                  temp_requirement: chilled
+                  order_units: 150
+                  order_weight_kg: 180.0
+                  order_volume_m3: 0.75
+                  rolled_over: false
+                  deferral_count: 0
+                  client_op_id: c382a912-70b1-4f11-92b4-e4fbfd8e4011
+                confirmation_code: CONF-OUT004-801
+                rolled_over: false
+        '400':
+          description: Non-operating day or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: NOT_OPERATING_DAY
+                  message: Delivery date is not an operating day
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Constraint violation or invalid date/constants error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: NOT_OPERATING_DAY
+                  message: Delivery date is not an operating day or is in the past
+
+    get:
+      operationId: listOrders
+      summary: List store manager own orders
+      tags:
+        - store_manager
+      x-role:
+        - store_manager
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+              example:
+                - id: ORD-20250801-001
+                  outlet_id: OUT004
+                  delivery_date: "2025-08-01"
+                  placed_at: "2025-07-31T14:00:00+05:30"
+                  status: SUBMITTED
+                  temp_requirement: chilled
+                  order_units: 150
+                  order_weight_kg: 180.0
+                  order_volume_m3: 0.75
+                  rolled_over: false
+                  deferral_count: 0
+
+  /orders/{id}:
+    get:
+      operationId: getOrderById
+      summary: Get order details with timeline and deferral history
+      tags:
+        - store_manager
+      x-role:
+        - store_manager
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: ORD-20250801-001
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+              example:
+                id: ORD-20250801-001
+                outlet_id: OUT004
+                delivery_date: "2025-08-01"
+                placed_at: "2025-07-31T14:00:00+05:30"
+                status: SCHEDULED
+                temp_requirement: chilled
+                order_units: 150
+                order_weight_kg: 180.0
+                order_volume_m3: 0.75
+                rolled_over: false
+                deferral_count: 0
+                trip_id: TRIP-20250801-01
+                stop_id: STOP-20250801-001
+                eta: "06:15"
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+      summary: Cancel an unfulfilled order with mandatory reason
+      tags:
+        - store_manager
+      x-role:
+        - store_manager
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: ORD-20250801-001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+            example:
+              reason: Store inventory adjusted; order no longer required.
+              note: Cancelled prior to load confirmation.
+      responses:
+        '200':
+          description: Cancelled order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+              example:
+                id: ORD-20250801-001
+                outlet_id: OUT004
+                delivery_date: "2025-08-01"
+                placed_at: "2025-07-31T14:00:00+05:30"
+                status: CANCELLED
+                temp_requirement: chilled
+                order_units: 150
+                order_weight_kg: 180.0
+                order_volume_m3: 0.75
+                rolled_over: false
+                deferral_count: 0
+                cancel_reason: Store inventory adjusted; order no longer required.
+        '409':
+          description: Invalid transition (e.g. order already loaded or delivered)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_TRANSITION
+                  message: Cannot cancel order in LOADED status
+
+  /outlets/{id}/expected-deliveries:
+    get:
+      operationId: getOutletExpectedDeliveries
+      summary: Get expected arrival ETAs for outlet planned orders
+      tags:
+        - store_manager
+      x-role:
+        - store_manager
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: OUT004
+      responses:
+        '200':
+          description: Expected delivery stops and ETAs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TripStop'
+              example:
+                - id: STOP-20250801-001
+                  trip_id: TRIP-20250801-01
+                  order_id: ORD-20250801-001
+                  seq: 1
+                  eta: "06:15"
+                  service_start_est: "06:15"
+                  service_min: 16
+                  status: PENDING
+                  receipt_status: NONE
+
+  /stops/{id}/receipt:
+    post:
+      operationId: recordStopReceipt
+      summary: Confirm delivery receipt or report goods discrepancy
+      tags:
+        - store_manager
+      x-role:
+        - store_manager
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: STOP-20250801-001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordReceiptRequest'
+            example:
+              outcome: full
+              note: Confirmed all 150 chilled units received in good condition.
+              client_op_id: f721a833-2890-4100-881a-bb1902931102
+      responses:
+        '200':
+          description: Goods receipt record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+              example:
+                id: RCP-20250801-001
+                stop_id: STOP-20250801-001
+                outcome: full
+                note: Confirmed all 150 chilled units received in good condition.
+                confirmed_by: store@waypoint.test
+                confirmed_at: "2025-08-01T06:35:00+05:30"
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      summary: Retrieve user notification messages
+      tags:
+        - store_manager
+      x-role:
+        - store_manager
+        - dispatcher
+        - driver
+        - loader
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+              example:
+                - id: NOTIF001
+                  event_id: EVT-20250801-01
+                  audience_role: store_manager
+                  audience_scope: OUT004
+
+  /notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      summary: Mark notification as read
+      tags:
+        - store_manager
+      x-role:
+        - store_manager
+        - dispatcher
+        - driver
+        - loader
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: NOTIF001
+      responses:
+        '200':
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+              example:
+                id: NOTIF001
+                event_id: EVT-20250801-01
+                audience_role: store_manager
+                audience_scope: OUT004
+                read_at: "2025-07-31T14:15:00+05:30"
+
+  # ----------------------------------------------------
+  # Dispatcher Planning Endpoints
+  # ----------------------------------------------------
+  /dashboard:
+    get:
+      operationId: getDashboard
+      summary: Get dispatcher overview metrics and progress
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Depot ID filter. Defaults if user has 1 depot. Returns 422 if missing when user has multiple depots, 403 if outside access.
+          example: Peliyagoda
+      responses:
+        '200':
+          description: Dispatcher dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+              example:
+                date: "2025-08-01"
+                depot_id: Peliyagoda
+                business_now: "2025-07-31T14:00:00+05:30"
+                cutoff:
+                  cutoff_at: "2025-07-31T16:00:00+05:30"
+                  minutes_remaining: 120
+                  passed: false
+                orders:
+                  total: 120
+                  by_brand:
+                    Fresh: 80
+                    Style: 25
+                    Tech: 15
+                  unassigned: 15
+                  planned: 95
+                  deferred: 10
+                planning_progress:
+                  planned: 95
+                  total: 120
+                vehicles:
+                  total: 38
+                  available: 34
+                  in_workshop: 4
+                  allocated: 28
+                  loading: 5
+                  active: 12
+                alerts: []
+                active_trips: []
+        '403':
+          description: Forbidden scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Missing required depot_id parameter for user with multiple depots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dispatch/queue:
+    get:
+      operationId: getDispatchQueue
+      summary: Get unallocated order dispatch queue
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: Unallocated dispatch queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+              example:
+                - id: ORD-20250801-001
+                  outlet_id: OUT004
+                  delivery_date: "2025-08-01"
+                  placed_at: "2025-07-31T14:00:00+05:30"
+                  status: SUBMITTED
+                  temp_requirement: chilled
+                  order_units: 150
+                  order_weight_kg: 180.0
+                  order_volume_m3: 0.75
+                  rolled_over: false
+                  deferral_count: 0
+        '403':
+          description: Forbidden scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /plans/generate:
+    post:
+      operationId: generatePlan
+      summary: Generate daily dispatch plan using allocation engine
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneratePlanRequest'
+            example:
+              depot_id: Peliyagoda
+              delivery_date: "2025-08-01"
+              regenerate: false
+      responses:
+        '200':
+          description: Generated plan run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanRun'
+              example:
+                id: RUN-20250801-PEL
+                depot_id: Peliyagoda
+                delivery_date: "2025-08-01"
+                status: OPEN
+                version: 1
+                generated_by: dispatcher@waypoint.test
+                generated_at: "2025-07-31T14:05:00+05:30"
+        '400':
+          description: Non-operating day
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /plans:
+    get:
+      operationId: listPlans
+      summary: List dispatch plan runs
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: List of plan runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanRun'
+
+  /plans/validate:
+    post:
+      operationId: validatePlan
+      summary: Validate plan against hard rules H1-H12
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidatePlanRequest'
+            example:
+              plan_run_id: RUN-20250801-PEL
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidatePlanResponse'
+              example:
+                valid: true
+                violations: []
+        '422':
+          description: Constraint violations detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: CONSTRAINT_VIOLATION
+                  message: Plan violates hard constraint H6 (volume capacity)
+                  details:
+                    violations:
+                      - rule: H6
+                        message: Volume capacity exceeded for vehicle VEH001
+                        actual: 21.5
+                        limit: 19.4
+
+  /trips/{id}/orders:
+    post:
+      operationId: addOrderToTrip
+      summary: Add order to a draft trip
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddOrderToTripRequest'
+            example:
+              order_id: ORD-20250801-001
+      responses:
+        '200':
+          description: Updated trip
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '422':
+          description: Constraint violation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /trips/{id}/orders/{order_id}:
+    delete:
+      operationId: removeOrderFromTrip
+      summary: Remove order from a draft trip
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: ORD-20250801-001
+      responses:
+        '200':
+          description: Updated trip
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+
+  /orders/{id}/defer:
+    post:
+      operationId: deferOrder
+      summary: Manually defer order with mandatory text reason
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: ORD-20250801-001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeferOrderRequest'
+            example:
+              reason_text: Manual deferral due to dock maintenance at destination.
+              note: Deferred by dispatcher.
+      responses:
+        '200':
+          description: Deferral record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deferral'
+        '409':
+          description: Invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_TRANSITION
+                  message: Cannot defer order in DELIVERED status
+
+  /orders/{id}/requeue:
+    post:
+      operationId: requeueOrder
+      summary: Return deferred order back to dispatch queue
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: ORD-20250801-001
+      responses:
+        '200':
+          description: Requeued order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /trips/{id}/confirm:
+    post:
+      operationId: confirmTrip
+      summary: Confirm draft trip plan for dispatch
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+      responses:
+        '200':
+          description: Confirmed trip
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripDetail'
+              example:
+                trip:
+                  id: TRIP-20250801-01
+                  plan_run_id: RUN-20250801-PEL
+                  delivery_date: "2025-08-01"
+                  trip_no: 1
+                  brand: Fresh
+                  district: Colombo
+                  depot_id: Peliyagoda
+                  vehicle_id: VEH001
+                  vehicle_type: truck
+                  vehicle_temp: chilled
+                  stop_count: 1
+                  depart_time: "03:30"
+                  plan_version: 1
+                  status: CONFIRMED
+                  weight_used_kg: 180.0
+                  weight_cap_kg: 3610.0
+                  volume_used_m3: 0.75
+                  volume_cap_m3: 19.4
+                stops:
+                  - id: STOP-20250801-001
+                    trip_id: TRIP-20250801-01
+                    order_id: ORD-20250801-001
+                    seq: 1
+                    outlet_id: OUT004
+                    outlet_name: Fresh Colombo 03
+                    district: Colombo
+                    dock_type: street
+                    parking_constraint: van_only
+                    order_units: 150
+                    order_weight_kg: 180.0
+                    order_volume_m3: 0.75
+                    window_open_time: "05:30"
+                    window_close_time: "08:00"
+                    eta: "06:15"
+                    service_min: 16
+                    status: PENDING
+                    receipt_status: NONE
+        '409':
+          description: Invalid transition or plan changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Hard constraint violation blocking trip confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /trips/{id}/cancel:
+    post:
+      operationId: cancelTrip
+      summary: Cancel a trip before departure
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+      responses:
+        '200':
+          description: Cancelled trip
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /plans/close-run:
+    post:
+      operationId: closePlanRun
+      summary: Close dispatch plan run and rollover unserved orders
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: Closed plan run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanRun'
+        '409':
+          description: Blocked because unassigned orders remain without formal deferrals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /plans/summary:
+    get:
+      operationId: getPlansSummary
+      summary: Get aggregate dispatch metrics and summary
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: Summary of plan runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanRunSummaryResponse'
+              example:
+                plan_run_id: RUN-20250801-PEL
+                status: OPEN
+                version: 1
+                trips: 12
+                orders_served: 95
+                orders_deferred: 10
+                deferred_counts:
+                  by_class:
+                    UNAVOIDABLE: 4
+                    CHOICE: 6
+                  by_code:
+                    CAPACITY_FULL: 6
+                    NO_REEFER: 4
+                capacity:
+                  weight_used_kg: 32000.0
+                  weight_cap_kg: 45000.0
+                  volume_used_m3: 190.0
+                  volume_cap_m3: 250.0
+                reefer:
+                  chilled_demand: 18
+                  chilled_used: 14
+                  chilled_available: 16
+                fuel: []
+                constraint_health:
+                  compliant: true
+                  violations: []
+
+  /fuel:
+    get:
+      operationId: getFuelState
+      summary: Get vehicle fuel quota usage and remaining litres
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: Fuel ledger list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FuelLedger'
+
+  /fleet:
+    get:
+      operationId: getFleetAvailability
+      summary: Get fleet vehicle availability by date
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: Fleet availability list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VehicleAvailability'
+
+  # ----------------------------------------------------
+  # Dispatcher Monitoring & Exceptions Endpoints
+  # ----------------------------------------------------
+  /monitoring/live:
+    get:
+      operationId: getLiveMonitoring
+      summary: Get active vehicle progress, delay status, and at-risk stops
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: Live monitoring dashboard payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveMonitoringResponse'
+              example:
+                last_synced_at: "2025-08-01T06:45:00+05:30"
+                trips: []
+
+  /alerts:
+    get:
+      operationId: listAlerts
+      summary: List system alerts and operational issues
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: System alerts list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertItem'
+              example:
+                - id: ALT001
+                  type: exception
+                  severity: warning
+                  status: open
+                  message: Vehicle issue reported on TRIP-20250801-01
+                  created_at: "2025-08-01T07:10:00+05:30"
+
+  /exceptions/{id}/decision:
+    post:
+      operationId: resolveExceptionDecision
+      summary: Record dispatcher decision on driver exception (retry or skip)
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: EXC001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExceptionDecisionRequest'
+            example:
+              decision: skip
+              note: Vehicle breakdown cannot be recovered in time for Fresh window.
+      responses:
+        '200':
+          description: Updated exception
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exception'
+        '422':
+          description: Hard constraint violation (e.g. retrying a mall stop past window)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /load-checks/{id}/resolve:
+    post:
+      operationId: resolveLoadCheck
+      summary: Resolve warehouse loading shortfall
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: LC001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveLoadCheckRequest'
+            example:
+              resolution: proceed_partial
+              note: Dispatch partial quantity; remaining units backordered.
+      responses:
+        '200':
+          description: Resolved load check
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadCheck'
+
+  /deferrals:
+    get:
+      operationId: listDeferrals
+      summary: List order deferrals queue
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: Deferrals list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Deferral'
+
+  /outlets/{id}/skip-history:
+    get:
+      operationId: getOutletSkipHistory
+      summary: Get deferral skip history for an outlet
+      tags:
+        - dispatcher
+      x-role:
+        - dispatcher
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: OUT004
+      responses:
+        '200':
+          description: Outlet deferral history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Deferral'
+
+  # ----------------------------------------------------
+  # Loader Endpoints
+  # ----------------------------------------------------
+  /loading/trips:
+    get:
+      operationId: getLoadingTrips
+      summary: Get confirmed trips ready for warehouse loading
+      tags:
+        - loader
+      x-role:
+        - loader
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: depot_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Peliyagoda
+      responses:
+        '200':
+          description: Confirmed trip cards for loading
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TripCard'
+              example:
+                - id: TRIP-20250801-01
+                  plan_run_id: RUN-20250801-PEL
+                  delivery_date: "2025-08-01"
+                  trip_no: 1
+                  brand: Fresh
+                  district: Colombo
+                  depot_id: Peliyagoda
+                  vehicle_id: VEH001
+                  vehicle_type: truck
+                  vehicle_temp: chilled
+                  stop_count: 1
+                  depart_time: "03:30"
+                  plan_version: 1
+                  status: CONFIRMED
+                  weight_used_kg: 180.0
+                  weight_cap_kg: 3610.0
+                  volume_used_m3: 0.75
+                  volume_cap_m3: 19.4
+
+  /trips/{id}/load-list:
+    get:
+      operationId: getTripLoadList
+      summary: Get trip load manifest with delivery sequence and reverse load order
+      tags:
+        - loader
+      x-role:
+        - loader
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+      responses:
+        '200':
+          description: Load manifest details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadListResponse'
+              example:
+                plan_version: 1
+                trip:
+                  id: TRIP-20250801-01
+                  plan_run_id: RUN-20250801-PEL
+                  delivery_date: "2025-08-01"
+                  trip_no: 1
+                  brand: Fresh
+                  district: Colombo
+                  depot_id: Peliyagoda
+                  vehicle_id: VEH001
+                  vehicle_type: truck
+                  vehicle_temp: chilled
+                  stop_count: 1
+                  depart_time: "03:30"
+                  plan_version: 1
+                  status: CONFIRMED
+                  weight_used_kg: 180.0
+                  weight_cap_kg: 3610.0
+                  volume_used_m3: 0.75
+                  volume_cap_m3: 19.4
+                delivery_sequence: []
+                reverse_load_order: []
+
+  /trips/{id}/load-start:
+    post:
+      operationId: startTripLoading
+      summary: Start warehouse loading for a confirmed trip
+      tags:
+        - loader
+      x-role:
+        - loader
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+      responses:
+        '200':
+          description: Trip transitioning to LOADING status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '409':
+          description: Plan changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /trips/{id}/load-checks:
+    post:
+      operationId: reportLoadCheck
+      summary: Report missing or damaged stock loading shortfall
+      tags:
+        - loader
+      x-role:
+        - loader
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLoadCheckRequest'
+            example:
+              order_id: ORD-20250801-001
+              plan_version: 1
+              expected_qty: 150
+              loaded_qty: 140
+              issue: missing
+              note: 10 units missing from staging bay.
+              client_op_id: e102911a-0012-4211-b012-aa7719281100
+      responses:
+        '201':
+          description: Reported shortfall
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadCheck'
+        '409':
+          description: Stale plan version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /trips/{id}/load-confirm:
+    post:
+      operationId: confirmTripLoad
+      summary: Confirm trip loading completed at current plan_version
+      tags:
+        - loader
+      x-role:
+        - loader
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmLoadRequest'
+            example:
+              plan_version: 1
+      responses:
+        '200':
+          description: Trip loaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '409':
+          description: Open shortfall or stale plan version blocking confirm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ----------------------------------------------------
+  # Driver Endpoints
+  # ----------------------------------------------------
+  /driver/trips:
+    get:
+      operationId: getDriverTrips
+      summary: Get trips assigned to driver vehicle
+      tags:
+        - driver
+      x-role:
+        - driver
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Driver assigned trip cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TripCard'
+              example:
+                - id: TRIP-20250801-01
+                  plan_run_id: RUN-20250801-PEL
+                  delivery_date: "2025-08-01"
+                  trip_no: 1
+                  brand: Fresh
+                  district: Colombo
+                  depot_id: Peliyagoda
+                  vehicle_id: VEH001
+                  vehicle_type: truck
+                  vehicle_temp: chilled
+                  stop_count: 1
+                  depart_time: "03:30"
+                  plan_version: 1
+                  status: CONFIRMED
+                  weight_used_kg: 180.0
+                  weight_cap_kg: 3610.0
+                  volume_used_m3: 0.75
+                  volume_cap_m3: 19.4
+
+  /trips/{id}/start:
+    post:
+      operationId: startTrip
+      summary: Driver accepts handover and starts delivery route
+      tags:
+        - driver
+      x-role:
+        - driver
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartTripRequest'
+            example:
+              plan_version: 1
+              client_op_id: b1290119-9921-4b11-8812-cc9901129988
+      responses:
+        '200':
+          description: Trip started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '409':
+          description: Invalid transition, plan changed, or stale version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /stops/{id}/arrive:
+    post:
+      operationId: recordStopArrival
+      summary: Record driver arrival at stop
+      tags:
+        - driver
+      x-role:
+        - driver
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: STOP-20250801-001
+      responses:
+        '200':
+          description: Updated stop
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripStop'
+
+  /stops/{id}/outcome:
+    post:
+      operationId: recordStopOutcome
+      summary: Record stop delivery outcome (delivered, partial, refused, closed)
+      tags:
+        - driver
+      x-role:
+        - driver
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: STOP-20250801-001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordStopOutcomeRequest'
+            example:
+              outcome: delivered
+              quantity_delivered: 150
+              received_by: K. Perera
+              outcome_note: Goods delivered smoothly at street curb.
+              completed_at: "2025-08-01T06:30:00+05:30"
+              client_op_id: a9012389-1122-4a00-9988-bb7711223344
+      responses:
+        '200':
+          description: Updated stop
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripStop'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /stops/{id}/exception:
+    post:
+      operationId: reportStopException
+      summary: Report field delivery exception
+      tags:
+        - driver
+      x-role:
+        - driver
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: STOP-20250801-001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordStopExceptionRequest'
+            example:
+              type: vehicle_issue
+              note: Compressor coolant leak; vehicle stopped at Kandy corridor.
+              client_op_id: d8812900-3321-4f00-8812-ee9911002233
+              client_seq: 4
+              client_ts: "2025-08-01T07:10:00+05:30"
+              plan_version: 1
+      responses:
+        '201':
+          description: Created field exception
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exception'
+
+  /trips/{id}/complete:
+    post:
+      operationId: completeTrip
+      summary: Complete delivery route for trip
+      tags:
+        - driver
+      x-role:
+        - driver
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: TRIP-20250801-01
+      responses:
+        '200':
+          description: Completed trip
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+
+  /sync:
+    post:
+      operationId: syncOfflineOperations
+      summary: Batch sync offline queued operations
+      tags:
+        - driver
+      x-role:
+        - driver
+        - loader
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncBatchRequest'
+            example:
+              operations:
+                - client_op_id: a9012389-1122-4a00-9988-bb7711223344
+                  device_id: DEV-DRV-01
+                  client_seq: 1
+                  op_type: recordStopOutcome
+                  payload:
+                    stop_id: STOP-20250801-001
+                    outcome: delivered
+                  client_ts: "2025-08-01T06:30:00+05:30"
+      responses:
+        '200':
+          description: Sync replay batch response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncBatchResponse'
+              example:
+                results:
+                  - client_op_id: a9012389-1122-4a00-9988-bb7711223344
+                    result: applied
+
+  # ----------------------------------------------------
+  # Real-Time SSE Stream Endpoint
+  # ----------------------------------------------------
+  /events/stream:
+    get:
+      operationId: getEventsStream
+      summary: Real-time Server-Sent Events stream for domain updates
+      tags:
+        - reference
+      x-role:
+        - dispatcher
+        - loader
+        - driver
+        - store_manager
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: stream_token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Short-lived stream token in query string since EventSource cannot set headers.
+          example: st_89123812903810239
+      responses:
+        '200':
+          description: |
+            Server-Sent Events stream emitting domain events (`order.submitted`, `order.deferred`, `order.cancelled`, `plan.generated`, `trip.confirmed`, `trip.updated`, `loading.shortfall`, `shortfall.resolved`, `trip.loaded`, `trip.started`, `stop.arrived`, `stop.outcome`, `stop.exception`, `exception.decided`, `receipt.confirmed`, `receipt.discrepancy`, `sync.reconciled`, `sync.conflict`, `run.closed`).
+            Clients fallback to 15s polling if SSE disconnects.
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/Event'
+              example:
+                id: EVT001
+                type: order.submitted
+                occurred_at: "2025-07-31T14:00:00+05:30"
+                entity:
+                  type: order
+                  id: ORD-20250801-001
+                data: {}
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer authentication header. Role and scope are derived from the token.
+
+  schemas:
+    # ----------------------------------------------------
+    # Enums
+    # ----------------------------------------------------
+    Brand:
+      type: string
+      enum:
+        - Fresh
+        - Style
+        - Tech
+      description: Operating retail brand of Waypoint Group.
+
+    Role:
+      type: string
+      enum:
+        - dispatcher
+        - loader
+        - driver
+        - store_manager
+      description: User role within the Waypoint delivery planning system.
+
+    VehicleStatus:
+      type: string
+      enum:
+        - available
+        - in_workshop
+      description: Operational status of a vehicle.
+
+    TemperatureRequirement:
+      type: string
+      enum:
+        - chilled
+        - ambient
+      description: Temperature requirement for orders or vehicles.
+
+    VehicleType:
+      type: string
+      enum:
+        - truck
+        - van
+      description: Classification of vehicle.
+
+    DockType:
+      type: string
+      enum:
+        - rear_dock
+        - street
+        - mall_bay
+      description: Unloading facility type at an outlet.
+
+    ParkingConstraint:
+      type: string
+      enum:
+        - normal
+        - van_only
+        - mall_dock
+      description: Access constraint for parking/unloading at an outlet.
+
+    OrderStatus:
+      type: string
+      enum:
+        - SUBMITTED
+        - PLANNED
+        - SCHEDULED
+        - LOADED
+        - IN_TRANSIT
+        - DELIVERED
+        - PARTIALLY_DELIVERED
+        - DEFERRED
+        - CANCELLED
+      description: Lifecycle status of an order.
+
+    PlanRunStatus:
+      type: string
+      enum:
+        - OPEN
+        - CLOSED
+      description: Status of a daily planning run.
+
+    TripStatus:
+      type: string
+      enum:
+        - DRAFT
+        - CONFIRMED
+        - LOADING
+        - LOADED
+        - IN_PROGRESS
+        - COMPLETED
+        - BLOCKED
+        - CANCELLED
+      description: Status of a delivery trip.
+
+    StopStatus:
+      type: string
+      enum:
+        - PENDING
+        - ARRIVED
+        - DELIVERED
+        - PARTIAL
+        - FAILED
+        - EXCEPTION
+        - SKIPPED
+      description: Status of an individual trip stop.
+
+    ReceiptStatus:
+      type: string
+      enum:
+        - NONE
+        - AWAITING
+        - CONFIRMED
+        - DISCREPANCY
+      description: Store manager receipt confirmation status for a stop.
+
+    StopOutcome:
+      type: string
+      enum:
+        - delivered
+        - partial
+        - refused
+        - closed
+      description: Outcome recorded by the driver at a stop.
+
+    ReceiptOutcome:
+      type: string
+      enum:
+        - full
+        - discrepancy
+      description: Outcome recorded by the store manager upon receipt.
+
+    LoadCheckIssue:
+      type: string
+      enum:
+        - missing
+        - damaged
+      description: Issue reported during loading check.
+
+    LoadCheckStatus:
+      type: string
+      enum:
+        - OPEN
+        - RESOLVED
+      description: Status of a load check shortfall report.
+
+    LoadCheckResolution:
+      type: string
+      enum:
+        - defer_order
+        - replan_order
+        - proceed_partial
+      description: Dispatcher resolution for a loading shortfall.
+
+    DeferralReasonCode:
+      type: string
+      enum:
+        - NO_REEFER
+        - NO_VAN
+        - TOO_LARGE
+        - WINDOW_INFEASIBLE
+        - CAPACITY_FULL
+        - TIME_BUDGET
+        - TRIP_LIMIT
+        - FUEL_QUOTA
+        - SHORTFALL
+        - DELIVERY_FAILED
+        - EXCEPTION_SKIPPED
+        - MANUAL
+      description: Causal code for deferring an order.
+
+    DeferralReasonClass:
+      type: string
+      enum:
+        - UNAVOIDABLE
+        - CHOICE
+        - OPERATIONAL
+        - DISPATCHER
+      description: Classification of deferral cause.
+
+    DeferralDecidedBy:
+      type: string
+      enum:
+        - engine
+        - dispatcher
+        - system
+      description: Decision authority for a deferral.
+
+    ExceptionType:
+      type: string
+      enum:
+        - dock_blocked
+        - outlet_closed
+        - vehicle_issue
+        - access_problem
+        - other
+      description: Type of field exception reported by driver.
+
+    ExceptionStatus:
+      type: string
+      enum:
+        - OPEN
+        - DECIDED
+      description: Resolution status of a field exception.
+
+    ExceptionDecision:
+      type: string
+      enum:
+        - retry
+        - skip
+      description: Dispatcher decision on a field exception.
+
+    SyncOpResult:
+      type: string
+      enum:
+        - applied
+        - replayed
+        - applied_with_conflict
+        - rejected
+      description: Outcome of an offline operation sync replay.
+
+    EventType:
+      type: string
+      enum:
+        - order.submitted
+        - order.deferred
+        - order.cancelled
+        - plan.generated
+        - trip.confirmed
+        - trip.updated
+        - loading.shortfall
+        - shortfall.resolved
+        - trip.loaded
+        - trip.started
+        - stop.arrived
+        - stop.outcome
+        - stop.exception
+        - exception.decided
+        - receipt.confirmed
+        - receipt.discrepancy
+        - sync.reconciled
+        - sync.conflict
+        - run.closed
+      description: Domain event type for live updates and SSE.
+
+    # ----------------------------------------------------
+    # Error Envelope & Rule Violations
+    # ----------------------------------------------------
+    Violation:
+      type: object
+      required:
+        - rule
+        - message
+      properties:
+        rule:
+          type: string
+          description: Rule ID (e.g. H1 through H12).
+        message:
+          type: string
+          description: Human-readable description of rule violation.
+        actual:
+          description: Observed value that violated constraint.
+        limit:
+          description: Threshold limit specified by the rule.
+      description: Constraint violation detail item.
+
+    ErrorDetails:
+      type: object
+      properties:
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+          description: List of rule violations if code is CONSTRAINT_VIOLATION.
+      additionalProperties: true
+      description: Detailed contextual metadata for error payload.
+
+    ErrorBody:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code (e.g. CONSTRAINT_VIOLATION, PLAN_CHANGED, NOT_OPERATING_DAY, INVALID_TRANSITION, FORBIDDEN_SCOPE, OPEN_SHORTFALL, STALE_PLAN_VERSION).
+        message:
+          type: string
+          description: High-level error message.
+        details:
+          $ref: '#/components/schemas/ErrorDetails'
+      description: Core error payload.
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+      description: Standard API error response envelope.
+
+    # ----------------------------------------------------
+    # Domain Model & DTO Schemas
+    # ----------------------------------------------------
+    Depot:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique depot identifier (e.g. Peliyagoda, Kandy).
+        name:
+          type: string
+          description: Name of the distribution center or regional hub.
+      description: Distribution center depot.
+
+    District:
+      type: object
+      required:
+        - district
+        - depot
+        - road_class
+        - free_flow_kmh
+        - depot_to_district_km
+        - depot_to_district_freeflow_min
+        - inter_stop_km
+        - inter_stop_freeflow_min
+      properties:
+        district:
+          type: string
+          description: Name of the district.
+        depot:
+          type: string
+          description: Serving depot name/ID.
+        road_class:
+          type: string
+          description: Classification of road network (urban, suburban, highway, hill).
+        free_flow_kmh:
+          type: integer
+          description: Free-flow travel speed in km/h.
+        depot_to_district_km:
+          type: number
+          description: Distance from depot to district center in km.
+        depot_to_district_freeflow_min:
+          type: integer
+          description: Free-flow travel time from depot to district in minutes.
+        inter_stop_km:
+          type: number
+          description: Average inter-stop distance within district in km.
+        inter_stop_freeflow_min:
+          type: integer
+          description: Average inter-stop travel time in minutes.
+      description: Geographic district and travel reference data.
+
+    Outlet:
+      type: object
+      required:
+        - outlet_id
+        - brand
+        - district
+        - depot
+        - dock_type
+        - parking_constraint
+        - window_open_time
+        - window_close_time
+      properties:
+        outlet_id:
+          type: string
+          description: Unique outlet code (e.g. OUT001).
+        brand:
+          $ref: '#/components/schemas/Brand'
+        district:
+          type: string
+          description: District name where outlet is situated.
+        depot:
+          type: string
+          description: Designated serving depot.
+        dock_type:
+          $ref: '#/components/schemas/DockType'
+        parking_constraint:
+          $ref: '#/components/schemas/ParkingConstraint'
+        mall_window:
+          type: string
+          nullable: true
+          description: Fixed access window for mall outlets (HH:MM-HH:MM), if applicable.
+        window_open_time:
+          type: string
+          description: Delivery window opening time (HH:MM).
+        window_close_time:
+          type: string
+          description: Delivery window closing time (HH:MM).
+      description: Retail outlet reference model.
+
+    Vehicle:
+      type: object
+      required:
+        - vehicle_id
+        - type
+        - temp
+        - weight_cap_kg
+        - volume_cap_m3
+        - fuel_type
+        - km_per_l
+        - weekly_fuel_quota_l
+        - depot
+      properties:
+        vehicle_id:
+          type: string
+          description: Unique vehicle code (e.g. VEH001).
+        type:
+          $ref: '#/components/schemas/VehicleType'
+        temp:
+          $ref: '#/components/schemas/TemperatureRequirement'
+        weight_cap_kg:
+          type: number
+          description: Maximum weight capacity in kilograms.
+        volume_cap_m3:
+          type: number
+          description: Maximum volume capacity in cubic meters.
+        fuel_type:
+          type: string
+          description: Fuel specification (e.g. diesel).
+        km_per_l:
+          type: number
+          description: Fuel efficiency in km per litre.
+        weekly_fuel_quota_l:
+          type: number
+          description: Weekly fuel allowance limit in litres.
+        depot:
+          type: string
+          description: Home depot assignment.
+      description: Fleet vehicle reference model.
+
+    ServiceAllowance:
+      type: object
+      required:
+        - brand
+        - rear_dock
+        - street
+        - mall_bay
+      properties:
+        brand:
+          $ref: '#/components/schemas/Brand'
+        rear_dock:
+          type: integer
+          description: Service allowance minutes for rear dock stops.
+        street:
+          type: integer
+          description: Service allowance minutes for street dock stops.
+        mall_bay:
+          type: integer
+          description: Service allowance minutes for mall bay stops.
+      description: Planning allowance per stop in minutes by brand and dock type.
+
+    CalendarDay:
+      type: object
+      required:
+        - date
+        - dow
+        - dow_name
+        - is_weekend
+        - iso_year
+        - iso_week
+        - is_payday
+        - festival_ramp
+        - is_holiday
+        - monsoon
+        - is_operating
+      properties:
+        date:
+          type: string
+          format: date
+          description: Calendar date (YYYY-MM-DD).
+        dow:
+          type: integer
+          description: Day of week index (0 = Monday).
+        dow_name:
+          type: string
+          description: Day of week name.
+        is_weekend:
+          type: integer
+          description: 1 if weekend, else 0.
+        iso_year:
+          type: integer
+          description: ISO calendar year.
+        iso_week:
+          type: integer
+          description: ISO calendar week number.
+        is_payday:
+          type: integer
+          description: 1 if payday, else 0.
+        festival:
+          type: string
+          nullable: true
+          description: Name of festival if applicable.
+        festival_ramp:
+          type: number
+          description: Festival proximity ramp index (0.0 to 1.0).
+        is_holiday:
+          type: integer
+          description: 1 if public holiday, else 0.
+        monsoon:
+          type: integer
+          description: 1 if monsoon season active, else 0.
+        is_operating:
+          type: integer
+          description: 1 if Waypoint operates on this date, 0 if closed.
+      description: Operating calendar reference data.
+
+    User:
+      type: object
+      required:
+        - id
+        - username
+        - role
+        - display_name
+      properties:
+        id:
+          type: string
+          description: User ID.
+        username:
+          type: string
+          description: Login username / email address.
+        role:
+          $ref: '#/components/schemas/Role'
+        depot_ids:
+          type: array
+          items:
+            type: string
+          description: Depot scoping list for dispatcher or loader (D24).
+        outlet_id:
+          type: string
+          nullable: true
+          description: Outlet scoping for store manager.
+        vehicle_id:
+          type: string
+          nullable: true
+          description: Vehicle scoping for driver.
+        display_name:
+          type: string
+          description: Human-readable display name.
+      description: System user account model.
+
+    UserDepotAccess:
+      type: object
+      required:
+        - user_id
+        - depot_id
+      properties:
+        user_id:
+          type: string
+        depot_id:
+          type: string
+      description: Mapping model for dispatcher/loader depot access.
+
+    VehicleAvailability:
+      type: object
+      required:
+        - vehicle_id
+        - date
+        - status
+      properties:
+        vehicle_id:
+          type: string
+          description: Vehicle code.
+        date:
+          type: string
+          format: date
+          description: Service date.
+        status:
+          $ref: '#/components/schemas/VehicleStatus'
+        note:
+          type: string
+          nullable: true
+          description: Operational note (e.g. workshop reason).
+      description: Daily availability status of a vehicle.
+
+    Order:
+      type: object
+      required:
+        - id
+        - outlet_id
+        - delivery_date
+        - placed_at
+        - status
+        - temp_requirement
+        - order_units
+        - order_weight_kg
+        - order_volume_m3
+        - rolled_over
+        - deferral_count
+      properties:
+        id:
+          type: string
+          description: Order identifier.
+        outlet_id:
+          type: string
+          description: Consignee outlet code.
+        delivery_date:
+          type: string
+          format: date
+          description: Target delivery date (YYYY-MM-DD).
+        requested_delivery_date:
+          type: string
+          format: date
+          nullable: true
+          description: Original requested delivery date if order rolled over (D18).
+        placed_at:
+          type: string
+          format: date-time
+          description: Placement timestamp in UTC.
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        temp_requirement:
+          $ref: '#/components/schemas/TemperatureRequirement'
+        order_units:
+          type: integer
+          description: Quantity of units ordered.
+        order_weight_kg:
+          type: number
+          description: Total weight in kg (always non-null in responses; D18).
+        order_volume_m3:
+          type: number
+          description: Total volume in m3 (always non-null in responses; D18).
+        rolled_over:
+          type: boolean
+          description: True if order was placed after 16:00 cutoff and rolled over.
+        deferral_count:
+          type: integer
+          description: Number of times this order has been deferred.
+        cancel_reason:
+          type: string
+          nullable: true
+          description: Mandatory reason if order was cancelled.
+        trip_id:
+          type: string
+          nullable: true
+          description: Assigned trip ID if planned or scheduled (D19).
+        stop_id:
+          type: string
+          nullable: true
+          description: Assigned stop ID if planned or scheduled (D19).
+        eta:
+          type: string
+          nullable: true
+          description: Estimated arrival time HH:MM (D19).
+        note:
+          type: string
+          nullable: true
+          description: Operational or delivery note.
+        client_op_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Idempotency client operation UUID.
+      description: Commercial delivery order model.
+
+    OutletServiceState:
+      type: object
+      required:
+        - outlet_id
+        - consecutive_deferrals
+      properties:
+        outlet_id:
+          type: string
+          description: Outlet code.
+        last_served_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of last completed delivery.
+        last_deferred_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of last deferred order.
+        consecutive_deferrals:
+          type: integer
+          description: Count of consecutive unserved runs.
+      description: Historical service tracking state for an outlet.
+
+    PlanRun:
+      type: object
+      required:
+        - id
+        - depot_id
+        - delivery_date
+        - status
+        - version
+        - generated_by
+        - generated_at
+      properties:
+        id:
+          type: string
+          description: Unique plan run identifier.
+        depot_id:
+          type: string
+          description: Serving depot ID.
+        delivery_date:
+          type: string
+          format: date
+          description: Target delivery date.
+        status:
+          $ref: '#/components/schemas/PlanRunStatus'
+        version:
+          type: integer
+          description: Monotonic plan revision version.
+        generated_by:
+          type: string
+          description: User ID or system generator label.
+        generated_at:
+          type: string
+          format: date-time
+          description: Generation timestamp.
+        ranking_config_json:
+          type: object
+          description: Active priority ranking parameters used for generation.
+        summary_json:
+          type: object
+          description: Summary metrics of generated plan.
+      description: Master daily dispatch planning run record.
+
+    Trip:
+      type: object
+      required:
+        - id
+        - plan_run_id
+        - vehicle_id
+        - depot_id
+        - delivery_date
+        - trip_no
+        - brand
+        - district
+        - status
+        - plan_version
+        - est_minutes
+        - est_km
+        - est_fuel_l
+      properties:
+        id:
+          type: string
+          description: Trip identifier.
+        plan_run_id:
+          type: string
+          description: Associated planning run ID.
+        vehicle_id:
+          type: string
+          description: Assigned vehicle code.
+        depot_id:
+          type: string
+          description: Depot code.
+        delivery_date:
+          type: string
+          format: date
+          description: Date of execution.
+        trip_no:
+          type: integer
+          enum: [1, 2]
+          description: Trip sequence number for vehicle on date (1 or 2).
+        brand:
+          $ref: '#/components/schemas/Brand'
+        district:
+          type: string
+          description: Target district served by trip.
+        status:
+          $ref: '#/components/schemas/TripStatus'
+        plan_version:
+          type: integer
+          description: Current revision version of trip plan.
+        depart_time:
+          type: string
+          nullable: true
+          description: Planned departure time (HH:MM).
+        est_minutes:
+          type: integer
+          description: Planned trip duration in minutes.
+        est_km:
+          type: number
+          description: Total estimated travel distance in km.
+        est_fuel_l:
+          type: number
+          description: Estimated fuel consumption in litres.
+        confirmed_by:
+          type: string
+          nullable: true
+          description: Dispatcher ID who confirmed the trip.
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Confirmation timestamp.
+      description: Delivery trip record.
+
+    TripCard:
+      type: object
+      required:
+        - id
+        - plan_run_id
+        - delivery_date
+        - trip_no
+        - brand
+        - district
+        - depot_id
+        - vehicle_id
+        - vehicle_type
+        - vehicle_temp
+        - stop_count
+        - plan_version
+        - status
+        - weight_used_kg
+        - weight_cap_kg
+        - volume_used_m3
+        - volume_cap_m3
+      properties:
+        id:
+          type: string
+        plan_run_id:
+          type: string
+        delivery_date:
+          type: string
+          format: date
+        trip_no:
+          type: integer
+          enum: [1, 2]
+        brand:
+          $ref: '#/components/schemas/Brand'
+        district:
+          type: string
+        depot_id:
+          type: string
+        vehicle_id:
+          type: string
+        vehicle_type:
+          $ref: '#/components/schemas/VehicleType'
+        vehicle_temp:
+          $ref: '#/components/schemas/TemperatureRequirement'
+        stop_count:
+          type: integer
+        depart_time:
+          type: string
+          nullable: true
+        plan_version:
+          type: integer
+        status:
+          $ref: '#/components/schemas/TripStatus'
+        weight_used_kg:
+          type: number
+        weight_cap_kg:
+          type: number
+        volume_used_m3:
+          type: number
+        volume_cap_m3:
+          type: number
+      description: Lightweight trip summary object used in loader and driver lists (D23).
+
+    StopDetail:
+      type: object
+      required:
+        - id
+        - trip_id
+        - order_id
+        - seq
+        - outlet_id
+        - outlet_name
+        - district
+        - dock_type
+        - parking_constraint
+        - order_units
+        - order_weight_kg
+        - order_volume_m3
+        - window_open_time
+        - window_close_time
+        - service_min
+        - status
+        - receipt_status
+      properties:
+        id:
+          type: string
+        trip_id:
+          type: string
+        order_id:
+          type: string
+        seq:
+          type: integer
+        outlet_id:
+          type: string
+        outlet_name:
+          type: string
+          example: Fresh Colombo 03
+        district:
+          type: string
+        dock_type:
+          $ref: '#/components/schemas/DockType'
+        parking_constraint:
+          $ref: '#/components/schemas/ParkingConstraint'
+        order_units:
+          type: integer
+        order_weight_kg:
+          type: number
+        order_volume_m3:
+          type: number
+        window_open_time:
+          type: string
+        window_close_time:
+          type: string
+        eta:
+          type: string
+          nullable: true
+        service_min:
+          type: integer
+        status:
+          $ref: '#/components/schemas/StopStatus'
+        receipt_status:
+          $ref: '#/components/schemas/ReceiptStatus'
+        arrived_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        outcome:
+          $ref: '#/components/schemas/StopOutcome'
+          nullable: true
+        quantity_delivered:
+          type: integer
+          nullable: true
+        received_by:
+          type: string
+          nullable: true
+        outcome_note:
+          type: string
+          nullable: true
+      description: Detailed stop payload with embedded outlet and order attributes (D23).
+
+    TripDetail:
+      type: object
+      required:
+        - trip
+        - stops
+      properties:
+        trip:
+          $ref: '#/components/schemas/TripCard'
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/StopDetail'
+      description: Trip detail container with nested stop list (D23).
+
+    TripStop:
+      type: object
+      required:
+        - id
+        - trip_id
+        - order_id
+        - seq
+        - service_min
+        - status
+        - receipt_status
+      properties:
+        id:
+          type: string
+          description: Stop identifier.
+        trip_id:
+          type: string
+          description: Associated trip ID.
+        order_id:
+          type: string
+          description: Associated unique order ID.
+        seq:
+          type: integer
+          description: Stop order sequence within trip.
+        eta:
+          type: string
+          nullable: true
+          description: Estimated arrival time (HH:MM).
+        service_start_est:
+          type: string
+          nullable: true
+          description: Estimated service start time (HH:MM).
+        service_min:
+          type: integer
+          description: Planned handling duration in minutes.
+        status:
+          $ref: '#/components/schemas/StopStatus'
+        receipt_status:
+          $ref: '#/components/schemas/ReceiptStatus'
+        arrived_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Actual arrival timestamp.
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Completion timestamp.
+        outcome:
+          $ref: '#/components/schemas/StopOutcome'
+          nullable: true
+        quantity_delivered:
+          type: integer
+          nullable: true
+          description: Total unit quantity delivered.
+        received_by:
+          type: string
+          nullable: true
+          description: Person accepting delivery at outlet.
+        outcome_note:
+          type: string
+          nullable: true
+          description: Driver notes on stop execution.
+        device_ts:
+          type: string
+          format: date-time
+          nullable: true
+          description: Device timestamp when stop action was recorded offline.
+      description: Individual delivery stop on a trip.
+
+    LoadCheck:
+      type: object
+      required:
+        - id
+        - trip_id
+        - order_id
+        - plan_version
+        - expected_qty
+        - loaded_qty
+        - issue
+        - status
+        - reported_by
+      properties:
+        id:
+          type: string
+          description: Load check shortfall record ID.
+        trip_id:
+          type: string
+          description: Trip ID being loaded.
+        order_id:
+          type: string
+          description: Affected order ID.
+        plan_version:
+          type: integer
+          description: Plan version active when reported.
+        expected_qty:
+          type: integer
+          description: Expected unit count from manifest.
+        loaded_qty:
+          type: integer
+          description: Actual physical count loaded.
+        issue:
+          $ref: '#/components/schemas/LoadCheckIssue'
+        note:
+          type: string
+          nullable: true
+          description: Loader explanation note.
+        status:
+          $ref: '#/components/schemas/LoadCheckStatus'
+        resolution:
+          $ref: '#/components/schemas/LoadCheckResolution'
+          nullable: true
+        reported_by:
+          type: string
+          description: Loader user ID.
+        resolved_by:
+          type: string
+          nullable: true
+          description: Dispatcher user ID resolving shortfall.
+      description: Warehouse loading shortfall audit record.
+
+    Deferral:
+      type: object
+      required:
+        - id
+        - order_id
+        - from_delivery_date
+        - reason_code
+        - reason_class
+        - reason_text
+        - consequence_text
+        - decided_by
+        - decided_at
+      properties:
+        id:
+          type: string
+          description: Deferral record ID.
+        order_id:
+          type: string
+          description: Deferred order ID.
+        from_delivery_date:
+          type: string
+          format: date
+          description: Delivery date skipped.
+        reason_code:
+          $ref: '#/components/schemas/DeferralReasonCode'
+        reason_class:
+          $ref: '#/components/schemas/DeferralReasonClass'
+        reason_text:
+          type: string
+          description: Detailed explanation of deferral reason.
+        consequence_text:
+          type: string
+          description: Recorded operational impact of deferral.
+        details_json:
+          type: object
+          nullable: true
+          description: Quantitative constraint details.
+        decided_by:
+          $ref: '#/components/schemas/DeferralDecidedBy'
+        decided_by_user:
+          type: string
+          nullable: true
+          description: User ID if decided by dispatcher.
+        decided_at:
+          type: string
+          format: date-time
+          description: Timestamp of deferral decision.
+        notified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when store manager was notified.
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when order was carried to new date.
+        resolved_to_date:
+          type: string
+          format: date
+          nullable: true
+          description: Next target delivery date.
+      description: Order deferral tracking record.
+
+    Receipt:
+      type: object
+      required:
+        - id
+        - stop_id
+        - outcome
+        - confirmed_by
+        - confirmed_at
+      properties:
+        id:
+          type: string
+          description: Proof of receipt record ID.
+        stop_id:
+          type: string
+          description: Delivered stop ID.
+        outcome:
+          $ref: '#/components/schemas/ReceiptOutcome'
+        note:
+          type: string
+          nullable: true
+          description: Store manager receiving notes.
+        confirmed_by:
+          type: string
+          description: Store manager user ID.
+        confirmed_at:
+          type: string
+          format: date-time
+          description: Confirmation timestamp.
+        qr_token:
+          type: string
+          nullable: true
+          description: Optional QR handshake verification token.
+      description: Goods receipt confirmation record.
+
+    Exception:
+      type: object
+      required:
+        - id
+        - trip_id
+        - stop_id
+        - type
+        - reported_at
+        - status
+      properties:
+        id:
+          type: string
+          description: Exception record ID.
+        trip_id:
+          type: string
+          description: Affected trip ID.
+        stop_id:
+          type: string
+          description: Affected stop ID.
+        type:
+          $ref: '#/components/schemas/ExceptionType'
+        note:
+          type: string
+          nullable: true
+          description: Driver explanation note.
+        reported_at:
+          type: string
+          format: date-time
+          description: Timestamp exception reported.
+        status:
+          $ref: '#/components/schemas/ExceptionStatus'
+        decision:
+          $ref: '#/components/schemas/ExceptionDecision'
+          nullable: true
+        decision_note:
+          type: string
+          nullable: true
+          description: Dispatcher decision rationale.
+        decided_by:
+          type: string
+          nullable: true
+          description: Dispatcher user ID.
+        decided_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Decision timestamp.
+      description: Field delivery exception record.
+
+    FuelLedger:
+      type: object
+      required:
+        - vehicle_id
+        - iso_year
+        - iso_week
+        - litres_committed
+      properties:
+        vehicle_id:
+          type: string
+          description: Vehicle code.
+        iso_year:
+          type: integer
+          description: ISO calendar year.
+        iso_week:
+          type: integer
+          description: ISO calendar week.
+        litres_committed:
+          type: number
+          description: Accumulated litres committed for the ISO week.
+      description: Vehicle weekly fuel consumption ledger.
+
+    Event:
+      type: object
+      required:
+        - id
+        - type
+        - occurred_at
+        - entity
+        - data
+      properties:
+        id:
+          type: string
+          description: Event unique identifier.
+        type:
+          $ref: '#/components/schemas/EventType'
+        occurred_at:
+          type: string
+          format: date-time
+          description: Event timestamp.
+        scope:
+          type: object
+          properties:
+            depot:
+              type: string
+            outlet:
+              type: string
+            vehicle:
+              type: string
+          description: Event filter scope metadata.
+        entity:
+          type: object
+          required:
+            - type
+            - id
+          properties:
+            type:
+              type: string
+            id:
+              type: string
+          description: Target entity reference.
+        data:
+          type: object
+          description: Payload context of event.
+      description: System domain event payload for real-time notification streams.
+
+    Notification:
+      type: object
+      required:
+        - id
+        - event_id
+        - audience_role
+      properties:
+        id:
+          type: string
+          description: Notification ID.
+        event_id:
+          type: string
+          description: Triggering domain event ID.
+        audience_role:
+          $ref: '#/components/schemas/Role'
+        audience_scope:
+          type: string
+          nullable: true
+          description: Specific scope constraint (depot/outlet ID).
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Read timestamp.
+      description: User notification entry.
+
+    SyncOp:
+      type: object
+      required:
+        - client_op_id
+        - device_id
+        - client_seq
+        - user_id
+        - op_type
+        - payload
+        - client_ts
+        - received_at
+        - result
+      properties:
+        client_op_id:
+          type: string
+          format: uuid
+          description: Monotonic UUID assigned by client device.
+        device_id:
+          type: string
+          description: Client device identifier.
+        client_seq:
+          type: integer
+          description: Monotonic sequence number per client device.
+        user_id:
+          type: string
+          description: User ID performing operation.
+        op_type:
+          type: string
+          description: API operation type string.
+        payload:
+          type: object
+          description: Operation parameters payload.
+        client_ts:
+          type: string
+          format: date-time
+          description: Device client timestamp.
+        received_at:
+          type: string
+          format: date-time
+          description: Server receipt timestamp.
+        applied_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Server application timestamp.
+        result:
+          $ref: '#/components/schemas/SyncOpResult'
+        reason:
+          type: string
+          nullable: true
+          description: Rejection or conflict explanation.
+      description: Offline operation synchronization log entry.
+
+    # ----------------------------------------------------
+    # API Request & Response Schemas
+    # ----------------------------------------------------
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      description: User credentials for login endpoint.
+
+    LoginResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - user
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: bearer
+        user:
+          $ref: '#/components/schemas/User'
+      description: Authentication token payload response.
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - outlet_id
+        - temp_requirement
+        - order_units
+      properties:
+        outlet_id:
+          type: string
+          description: Consignee outlet code.
+        delivery_date:
+          type: string
+          format: date
+          description: Target delivery date (optional; defaults to earliest operating day before 16:00 cutoff; D18).
+        temp_requirement:
+          $ref: '#/components/schemas/TemperatureRequirement'
+        order_units:
+          type: integer
+          description: Total quantity of units ordered.
+        order_weight_kg:
+          type: number
+          description: Weight fallback override in kg if units constant not used (D18).
+        order_volume_m3:
+          type: number
+          description: Volume fallback override in m3 if units constant not used (D18).
+        note:
+          type: string
+          description: Optional note from store manager.
+        client_op_id:
+          type: string
+          format: uuid
+          description: Idempotency client UUID.
+      description: Order placement payload.
+
+    CreateOrderResponse:
+      type: object
+      required:
+        - order
+        - confirmation_code
+        - rolled_over
+      properties:
+        order:
+          $ref: '#/components/schemas/Order'
+        confirmation_code:
+          type: string
+          description: Order confirmation tracking code.
+        rolled_over:
+          type: boolean
+          description: True if order placed after 16:00 cutoff and rolled to following run (D18).
+        requested_delivery_date:
+          type: string
+          format: date
+          description: Original requested delivery date if order was rolled over (D18).
+      description: Order placement acknowledgment response.
+
+    CancelOrderRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          description: Mandatory reason for order cancellation (D22).
+        note:
+          type: string
+          description: Optional additional note (D22).
+      description: Order cancellation body (D22).
+
+    RecordReceiptRequest:
+      type: object
+      required:
+        - outcome
+      properties:
+        outcome:
+          $ref: '#/components/schemas/ReceiptOutcome'
+        note:
+          type: string
+          description: Optional delivery discrepancy notes.
+        client_op_id:
+          type: string
+          format: uuid
+          description: Idempotency token.
+      description: Store manager receipt confirmation payload.
+
+    GeneratePlanRequest:
+      type: object
+      required:
+        - depot_id
+        - delivery_date
+      properties:
+        depot_id:
+          type: string
+        delivery_date:
+          type: string
+          format: date
+        regenerate:
+          type: boolean
+          description: If true, keeps existing locked (CONFIRMED) trips.
+      description: Plan generation request payload.
+
+    AddOrderToTripRequest:
+      type: object
+      required:
+        - order_id
+      properties:
+        order_id:
+          type: string
+      description: Payload to add an unassigned order to a draft trip.
+
+    DeferOrderRequest:
+      type: object
+      required:
+        - reason_text
+      properties:
+        reason_text:
+          type: string
+          description: Free-text manual deferral rationale (D22).
+        note:
+          type: string
+          description: Optional additional note (D22).
+        reason_code:
+          $ref: '#/components/schemas/DeferralReasonCode'
+          default: MANUAL
+      description: Payload for manual order deferral by dispatcher (D22).
+
+    ValidatePlanRequest:
+      type: object
+      required:
+        - plan_run_id
+      properties:
+        plan_run_id:
+          type: string
+      description: Plan validation request payload.
+
+    ValidatePlanResponse:
+      type: object
+      required:
+        - valid
+        - violations
+      properties:
+        valid:
+          type: boolean
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+      description: Plan validation result payload.
+
+    ExceptionDecisionRequest:
+      type: object
+      required:
+        - decision
+      properties:
+        decision:
+          $ref: '#/components/schemas/ExceptionDecision'
+        note:
+          type: string
+        override_reason:
+          type: string
+          description: Mandatory override rationale if retrying non-mall stop past window.
+      description: Dispatcher exception resolution decision payload.
+
+    ResolveLoadCheckRequest:
+      type: object
+      required:
+        - resolution
+      properties:
+        resolution:
+          $ref: '#/components/schemas/LoadCheckResolution'
+        note:
+          type: string
+      description: Dispatcher shortfall resolution payload.
+
+    CreateLoadCheckRequest:
+      type: object
+      required:
+        - order_id
+        - plan_version
+        - expected_qty
+        - loaded_qty
+        - issue
+      properties:
+        order_id:
+          type: string
+        plan_version:
+          type: integer
+        expected_qty:
+          type: integer
+        loaded_qty:
+          type: integer
+        issue:
+          $ref: '#/components/schemas/LoadCheckIssue'
+        note:
+          type: string
+        client_op_id:
+          type: string
+          format: uuid
+      description: Loader shortfall reporting payload.
+
+    ConfirmLoadRequest:
+      type: object
+      required:
+        - plan_version
+      properties:
+        plan_version:
+          type: integer
+          description: Must match current trip plan version.
+      description: Loader confirmation payload.
+
+    StartTripRequest:
+      type: object
+      required:
+        - plan_version
+      properties:
+        plan_version:
+          type: integer
+        client_op_id:
+          type: string
+          format: uuid
+      description: Driver trip departure payload.
+
+    RecordStopOutcomeRequest:
+      type: object
+      required:
+        - outcome
+        - completed_at
+      properties:
+        outcome:
+          $ref: '#/components/schemas/StopOutcome'
+        quantity_delivered:
+          type: integer
+          description: Must equal ordered units for delivered, strictly 0 < qty < ordered for partial, 0 for refused/closed (D20).
+        received_by:
+          type: string
+          description: Required for delivered and partial (D20).
+        outcome_note:
+          type: string
+        completed_at:
+          type: string
+          format: date-time
+        client_op_id:
+          type: string
+          format: uuid
+      description: Driver stop outcome recording payload (D20).
+
+    RecordStopExceptionRequest:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/ExceptionType'
+        note:
+          type: string
+        client_op_id:
+          type: string
+          format: uuid
+        client_seq:
+          type: integer
+        client_ts:
+          type: string
+          format: date-time
+        plan_version:
+          type: integer
+      description: Driver field exception reporting payload.
+
+    SyncOperationItem:
+      type: object
+      required:
+        - client_op_id
+        - device_id
+        - client_seq
+        - op_type
+        - payload
+        - client_ts
+      properties:
+        client_op_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+        client_seq:
+          type: integer
+        op_type:
+          type: string
+        payload:
+          type: object
+        client_ts:
+          type: string
+          format: date-time
+      description: Offline operation item queued on device.
+
+    SyncBatchRequest:
+      type: object
+      required:
+        - operations
+      properties:
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncOperationItem'
+      description: Batch offline operation sync replay payload.
+
+    SyncOperationResultItem:
+      type: object
+      required:
+        - client_op_id
+        - result
+      properties:
+        client_op_id:
+          type: string
+          format: uuid
+        result:
+          $ref: '#/components/schemas/SyncOpResult'
+        reason:
+          type: string
+      description: Replay result for a single synced client operation.
+
+    SyncBatchResponse:
+      type: object
+      required:
+        - results
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncOperationResultItem'
+      description: Response containing results for batch operation sync.
+
+    RefConfigResponse:
+      type: object
+      required:
+        - cutoff_time
+        - budget_fresh_min
+        - budget_style_tech_min
+        - unit_constants
+        - business_clock
+        - demo_mode
+      properties:
+        cutoff_time:
+          type: string
+          example: "16:00"
+        budget_fresh_min:
+          type: integer
+          example: 270
+        budget_style_tech_min:
+          type: integer
+          example: 480
+        unit_constants:
+          type: object
+          description: Calibrated kg and m3 per unit conversion factors by brand and temp.
+        business_clock:
+          type: string
+          description: Active business clock time representation.
+        demo_mode:
+          type: boolean
+          description: Indicates whether fixed demo time is active.
+      description: System configuration parameter values response.
+
+    DashboardSummary:
+      type: object
+      required:
+        - date
+        - depot_id
+        - business_now
+        - cutoff
+        - orders
+        - planning_progress
+        - vehicles
+        - alerts
+        - active_trips
+      properties:
+        date:
+          type: string
+          format: date
+        depot_id:
+          type: string
+        business_now:
+          type: string
+          format: date-time
+        cutoff:
+          type: object
+          required:
+            - cutoff_at
+            - minutes_remaining
+            - passed
+          properties:
+            cutoff_at:
+              type: string
+              format: date-time
+            minutes_remaining:
+              type: integer
+            passed:
+              type: boolean
+        orders:
+          type: object
+          required:
+            - total
+            - by_brand
+            - unassigned
+            - planned
+            - deferred
+          properties:
+            total:
+              type: integer
+            by_brand:
+              type: object
+              additionalProperties:
+                type: integer
+            unassigned:
+              type: integer
+            planned:
+              type: integer
+            deferred:
+              type: integer
+        planning_progress:
+          type: object
+          required:
+            - planned
+            - total
+          properties:
+            planned:
+              type: integer
+            total:
+              type: integer
+        vehicles:
+          type: object
+          required:
+            - total
+            - available
+            - in_workshop
+            - allocated
+            - loading
+            - active
+          properties:
+            total:
+              type: integer
+            available:
+              type: integer
+            in_workshop:
+              type: integer
+            allocated:
+              type: integer
+            loading:
+              type: integer
+            active:
+              type: integer
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlertItem'
+        active_trips:
+          type: array
+          items:
+            type: object
+            required:
+              - trip_id
+              - vehicle_id
+              - status
+              - stops_completed
+              - stops_total
+            properties:
+              trip_id:
+                type: string
+              vehicle_id:
+                type: string
+              status:
+                $ref: '#/components/schemas/TripStatus'
+              stops_completed:
+                type: integer
+              stops_total:
+                type: integer
+      description: Dispatcher dashboard aggregate summary object (D21).
+
+    PlanRunSummaryResponse:
+      type: object
+      required:
+        - plan_run_id
+        - status
+        - version
+        - trips
+        - orders_served
+        - orders_deferred
+        - deferred_counts
+        - capacity
+        - reefer
+        - fuel
+        - constraint_health
+      properties:
+        plan_run_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/PlanRunStatus'
+        version:
+          type: integer
+        trips:
+          type: integer
+        orders_served:
+          type: integer
+        orders_deferred:
+          type: integer
+        deferred_counts:
+          type: object
+          required:
+            - by_class
+            - by_code
+          properties:
+            by_class:
+              type: object
+              additionalProperties:
+                type: integer
+            by_code:
+              type: object
+              additionalProperties:
+                type: integer
+        capacity:
+          type: object
+          required:
+            - weight_used_kg
+            - weight_cap_kg
+            - volume_used_m3
+            - volume_cap_m3
+          properties:
+            weight_used_kg:
+              type: number
+            weight_cap_kg:
+              type: number
+            volume_used_m3:
+              type: number
+            volume_cap_m3:
+              type: number
+        reefer:
+          type: object
+          required:
+            - chilled_demand
+            - chilled_used
+            - chilled_available
+          properties:
+            chilled_demand:
+              type: integer
+            chilled_used:
+              type: integer
+            chilled_available:
+              type: integer
+        fuel:
+          type: array
+          items:
+            type: object
+            required:
+              - vehicle_id
+              - quota_l
+              - committed_l
+              - remaining_l
+            properties:
+              vehicle_id:
+                type: string
+              quota_l:
+                type: number
+              committed_l:
+                type: number
+              remaining_l:
+                type: number
+        constraint_health:
+          type: object
+          required:
+            - compliant
+            - violations
+          properties:
+            compliant:
+              type: boolean
+            violations:
+              type: array
+              items:
+                $ref: '#/components/schemas/Violation'
+      description: Master plan run summary and metric breakdown object (D21).
+
+    LiveMonitoringResponse:
+      type: object
+      required:
+        - last_synced_at
+        - trips
+      properties:
+        last_synced_at:
+          type: string
+          format: date-time
+        trips:
+          type: array
+          items:
+            type: object
+            required:
+              - vehicle_id
+              - driver_name
+              - trip_status
+              - brand
+              - district
+              - stops_completed
+              - stops_total
+              - health
+              - stops
+            properties:
+              vehicle_id:
+                type: string
+              driver_name:
+                type: string
+              trip_status:
+                $ref: '#/components/schemas/TripStatus'
+              brand:
+                $ref: '#/components/schemas/Brand'
+              district:
+                type: string
+              stops_completed:
+                type: integer
+              stops_total:
+                type: integer
+              next_stop:
+                type: object
+                nullable: true
+                properties:
+                  outlet_id:
+                    type: string
+                  eta:
+                    type: string
+              delay_min:
+                type: integer
+                nullable: true
+              health:
+                type: string
+                enum: [on_schedule, delayed, blocked]
+              stops:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - id
+                    - outlet_id
+                    - status
+                    - eta
+                    - pod_recorded
+                  properties:
+                    id:
+                      type: string
+                    outlet_id:
+                      type: string
+                    status:
+                      $ref: '#/components/schemas/StopStatus'
+                    eta:
+                      type: string
+                      nullable: true
+                    arrived_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    completed_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    pod_recorded:
+                      type: boolean
+      description: Live monitoring dashboard payload with nested trips and stops (D21).
+
+    AlertItem:
+      type: object
+      required:
+        - id
+        - type
+        - severity
+        - status
+        - message
+        - created_at
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [shortfall, exception, repeat_deferral, sync_conflict, capacity_shortage]
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        status:
+          type: string
+          enum: [open, resolved]
+        entity_ref:
+          type: object
+          nullable: true
+          properties:
+            type:
+              type: string
+            id:
+              type: string
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      description: System alert detail item (D21).
+
+    LoadListResponse:
+      type: object
+      required:
+        - plan_version
+        - trip
+        - delivery_sequence
+        - reverse_load_order
+      properties:
+        plan_version:
+          type: integer
+        trip:
+          $ref: '#/components/schemas/TripCard'
+        delivery_sequence:
+          type: array
+          items:
+            $ref: '#/components/schemas/StopDetail'
+        reverse_load_order:
+          type: array
+          items:
+            $ref: '#/components/schemas/StopDetail'
+      description: Warehouse load list response containing manifest sequence and reverse load order (D23).

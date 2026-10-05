@@ -1,0 +1,15 @@
+# Specification Decisions Log
+
+This document logs resolved specification questions from `openapi-questions.md` alongside their corresponding decision IDs and one-line resolutions.
+
+---
+
+| Resolved Question | Decision ID | Resolution Summary |
+|-------------------|-------------|--------------------|
+| **Q1: `POST /orders` Payload vs Domain Model Schemas** | **D18** | Order placement accepts optional `delivery_date`, optional `note`, optional `order_weight_kg` & `order_volume_m3`. Derived from unit constants if omitted (returns 422 if unconfigured). Weight & volume responses are always non-null. Auto-selects earliest operating day before 16:00 cutoff; passed cutoff rolls over to next open day (`rolled_over: true`, returns `requested_delivery_date`). Invalid/past/non-operating dates return 422 `NOT_OPERATING_DAY`. |
+| **Q2: Order Status Transition to SCHEDULED** | **D19** | `POST /trips/{id}/confirm` transitions trip to `CONFIRMED` and all orders on it from `PLANNED` to `SCHEDULED` in one transaction. Adding an order to a confirmed trip makes it `SCHEDULED` immediately; removing returns it to `SUBMITTED`. Either bumps `plan_version`. Order read objects include `status`, `trip_id`, `stop_id`, and `eta`. |
+| **Q3: Driver Outcome to Stop/Order Status Mapping** | **D20** | Driver outcomes map explicitly: `delivered` -> DELIVERED stop / DELIVERED order (`received_by`, `completed_at`, `quantity_delivered` = ordered); `partial` -> PARTIAL stop / PARTIALLY_DELIVERED order (`received_by`, `completed_at`, 0 < quantity < ordered); `refused` -> FAILED stop / DEFERRED order (`DELIVERY_FAILED`, quantity 0); `closed` -> FAILED stop / DEFERRED order (`DELIVERY_FAILED`, quantity 0). `SKIPPED` is set only by dispatcher exception skip decision (`EXCEPTION_SKIPPED`). |
+| **Q4: Aggregate Response Schemas** | **D21** | Defined explicit schemas for `DashboardSummary`, `PlanRunSummaryResponse`, `LiveMonitoringResponse`, and `AlertItem`. Rule-based delay tracking with `DELAY_ALERT_MIN` config defaulting to 15 minutes. |
+| **Q5: Parameter Naming for Cancel and Defer Endpoints** | **D22** | `POST /orders/{id}/cancel` takes `{ reason: string, note?: string }`. `POST /orders/{id}/defer` takes `{ reason_text: string, note?: string }` (sets `reason_code = MANUAL`, `reason_class = DISPATCHER`, `decided_by = dispatcher`). Both return 409 `INVALID_TRANSITION` if state disallows action. |
+| **Q6: Role-Specific Read Objects vs Domain Models** | **D23** | Defined `TripCard` (loader/driver lists), `TripDetail` with `StopDetail` array, and `LoadListResponse`. Deterministic outlet display_names generated at seed time (e.g., "Fresh Colombo 03"). |
+| **Q7: Multi-Depot Scope Claims & Access Control** | **D24** | JWT claims include `user_id`, `role`, `depot_ids[]` (dispatcher/loader), `outlet_id` (store manager), `vehicle_id` (driver). Replaced `users.depot_id` with `user_depot_access(user_id, depot_id)`. Depot-scoped endpoints accept `depot_id` query param (defaults if user has 1 depot, returns 422 if missing when user has multiple depots, returns 403 `FORBIDDEN_SCOPE` if outside user's access). |

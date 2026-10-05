@@ -1,0 +1,19 @@
+export const DEFAULT_DEPOT = 'Peliyagoda';
+export const DEFAULT_DELIVERY_DATE = '2025-08-01';
+export const DEPOTS = ['Peliyagoda', 'Kandy'];
+export const TIMEZONE = 'Asia/Colombo';
+
+export const RULE_IDS = {
+  H1: 'H1_TEMP_CAPABILITY',
+  H2: 'H2_VEHICLE_OUTLET_ACCESS',
+  H3: 'H3_MAX_WEIGHT',
+  H4: 'H4_MAX_VOLUME',
+  H5: 'H5_OPERATING_TIME',
+  H6: 'H6_DELIVERY_WINDOW',
+  H7: 'H7_SAME_OUTLET_DEFERRAL',
+  H8: 'H8_FREEZER_CHILLER_SEPARATION',
+  H9: 'H9_FUEL_QUOTA',
+  H10: 'H10_MALL_PARKING',
+  H11: 'H11_MALL_WINDOW',
+  H12: 'H12_DRIVER_DUTY_TIME',
+} as const;
