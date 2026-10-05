@@ -1,18 +1,32 @@
-# Stage 1: Build Flutter Web
-FROM ghcr.io/cirruslabs/flutter:stable AS build
+# Stage 1: Lightweight Flutter Web Build (Without bulky Android SDK)
+FROM debian:bullseye-slim AS build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    unzip \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install minimal Flutter SDK for Web
+ENV FLUTTER_HOME=/opt/flutter
+ENV PATH="${FLUTTER_HOME}/bin:${PATH}"
+
+RUN git clone --depth 1 --branch stable https://github.com/flutter/flutter.git ${FLUTTER_HOME} \
+    && git config --global --add safe.directory ${FLUTTER_HOME} \
+    && flutter config --no-analytics \
+    && flutter config --enable-web \
+    && flutter precache --web
 
 WORKDIR /app
 
-# Enable Flutter Web
-RUN flutter config --enable-web
-
-# Copy dependency definitions and pre-fetch
+# Copy dependencies and pre-fetch
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
-# Copy source tree and compile release web bundle
+# Copy project source and build web release
 COPY . .
-RUN flutter pub get && flutter build web --release --no-wasm-dry-run
+RUN flutter build web --release
 
 # Stage 2: Production Nginx Server
 FROM nginx:alpine
