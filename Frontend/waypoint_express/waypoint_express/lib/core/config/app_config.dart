@@ -9,6 +9,12 @@ class AppConfig {
     const fromEnv = String.fromEnvironment('BASE_URL');
     if (fromEnv.isNotEmpty) return fromEnv;
 
+    if (kIsWeb) {
+      final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'localhost';
+      final scheme = Uri.base.scheme.isNotEmpty ? Uri.base.scheme : 'http';
+      return '$scheme://$host:8000/api/v1';
+    }
+
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:8000/api/v1';
     }
