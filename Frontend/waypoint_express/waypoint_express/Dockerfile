@@ -1,5 +1,7 @@
-# Stage 1: Lightweight Flutter Web Build (Without bulky Android SDK)
-FROM debian:bullseye-slim AS build
+# Stage 1: Lightweight Flutter Web Build (Using Ubuntu 22.04 with active package mirrors)
+FROM ubuntu:22.04 AS build
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -8,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install minimal Flutter SDK for Web
+# Install minimal Flutter SDK for Web (No Android SDK)
 ENV FLUTTER_HOME=/opt/flutter
 ENV PATH="${FLUTTER_HOME}/bin:${PATH}"
 
